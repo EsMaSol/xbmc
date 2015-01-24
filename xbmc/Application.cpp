@@ -1945,26 +1945,40 @@ void CApplication::Render()
   if(!g_Windowing.BeginRender())
     return;
 
-  CDirtyRegionList dirtyRegions = g_windowManager.GetDirty();
-  if(g_graphicsContext.GetStereoMode())
-  {
-    g_graphicsContext.SetStereoView(RENDER_STEREO_VIEW_LEFT);
-    if(RenderNoPresent())
-      hasRendered = true;
+  CDirtyRegionList dirtyRegions;
 
-    if(g_graphicsContext.GetStereoMode() != RENDER_STEREO_MODE_MONO)
+  // render gui layer
+  int fps = 0;
+  if (g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
+    fps = CSettings::Get().GetInt("videoplayer.limitguiupdate");
+  unsigned int now = XbmcThreads::SystemClockMillis();
+  unsigned int frameTime = now - m_lastRenderTime;
+  if (fps <= 0 || frameTime * fps >= 1000)
+  {
+    dirtyRegions = g_windowManager.GetDirty();
+    if (g_graphicsContext.GetStereoMode())
     {
-      g_graphicsContext.SetStereoView(RENDER_STEREO_VIEW_RIGHT);
-      if(RenderNoPresent())
+      g_graphicsContext.SetStereoView(RENDER_STEREO_VIEW_LEFT);
+      if (RenderNoPresent())
+        hasRendered = true;
+
+      if (g_graphicsContext.GetStereoMode() != RENDER_STEREO_MODE_MONO)
+      {
+        g_graphicsContext.SetStereoView(RENDER_STEREO_VIEW_RIGHT);
+        if (RenderNoPresent())
+          hasRendered = true;
+      }
+      g_graphicsContext.SetStereoView(RENDER_STEREO_VIEW_OFF);
+    }
+    else
+    {
+      if (RenderNoPresent())
         hasRendered = true;
     }
-    g_graphicsContext.SetStereoView(RENDER_STEREO_VIEW_OFF);
   }
-  else
-  {
-    if(RenderNoPresent())
-      hasRendered = true;
-  }
+
+  // render video layer
+  g_windowManager.RenderEx();
 
   g_Windowing.EndRender();
 
@@ -1977,7 +1991,6 @@ void CApplication::Render()
   g_infoManager.ResetCache();
   lock.Leave();
 
-  unsigned int now = XbmcThreads::SystemClockMillis();
   if (hasRendered)
     m_lastRenderTime = now;
 
