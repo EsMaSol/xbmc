@@ -194,6 +194,10 @@ public:
 
   virtual float GetActualFPS() { return 0.0f; };
   virtual void SeekTime(int64_t iTime = 0){};
+  /*
+   \brief seek relative to current time, returns false if not implemented by player
+   */
+  virtual bool SeekTimeRelative(int64_t iTime) { return false; }
   /*!
    \brief current time in milliseconds
    */
